@@ -59,7 +59,6 @@ void thread_zip(const char *filename, char *old_char, int *count) {
     struct stat sb;
     fstat(fd, &sb);
     size_t fsize = sb.st_size;
-    // char *src = mmap(0, fsize, PROT_READ, MAP_PRIVATE, fd, 0);
 
     int step = fsize / 3;
 
@@ -162,8 +161,7 @@ void *worker(void *ptr) {
             tmp_count++;
         }
     }
-    // args->char_arr = realloc(args->char_arr, (sizeof(char) * (args->arr_size)));
-    // args->num_arr = realloc(args->num_arr, (sizeof(size_t) * (args->arr_size)));
+
     tmp_char_arr[(tmp_arr_size)-1] = tmp_old_char;
     tmp_num_arr[(tmp_arr_size)-1] = tmp_count;
 
