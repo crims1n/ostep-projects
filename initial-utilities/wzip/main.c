@@ -25,7 +25,7 @@ int main(int argc, char const *argv[]) {
         fstat(fd, &sb);
 
         if (sb.st_size > 4096) {
-            thread_zip(argv[i], &old_char, &count);
+            thread_zip(fp, &old_char, &count);
         } else {
             simple_zip(fp, &old_char, &count);
         }

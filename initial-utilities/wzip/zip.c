@@ -12,7 +12,7 @@ typedef struct __arg {
     // pass to
     size_t start;
     size_t stop;
-    FILE *fp;
+    char *src;
 
     // misc data that we may need?
     int count;
@@ -41,30 +41,31 @@ void simple_zip(FILE *fp, char *old_char, int *count) {
     }
 }
 
-arg_t *arg_init(size_t start_val, size_t stop_val, FILE *fp) {
+arg_t *arg_init(size_t start_val, size_t stop_val, char *source) {
     arg_t *args = malloc(sizeof(arg_t));
     args->start = start_val;
     args->stop = stop_val;
-    args->fp = fp;
+    args->src = source;
     args->count = 0;
     args->old_char = '\0';
     args->arr_size = 0;
     return args;
 }
 
-void thread_zip(const char *filename, char *old_char, int *count) {
+void thread_zip(FILE *fp, char *old_char, int *count) {
     pthread_t t[3];
-    FILE *fp = fopen(filename, "r");
     int fd = fileno(fp);
     struct stat sb;
     fstat(fd, &sb);
     size_t fsize = sb.st_size;
 
+    char *src = mmap(0, fsize, PROT_READ, MAP_PRIVATE, fd, 0);
+
     int step = fsize / 3;
 
-    arg_t *one_args = arg_init(0, step, fp);
-    arg_t *two_args = arg_init(step, step * 2, fp);
-    arg_t *three_args = arg_init(step * 2, fsize, fp);
+    arg_t *one_args = arg_init(0, step, src);
+    arg_t *two_args = arg_init(step, step * 2, src);
+    arg_t *three_args = arg_init(step * 2, fsize, src);
 
     pthread_create(&t[0], NULL, worker, (void *)one_args);
     pthread_create(&t[1], NULL, worker, (void *)two_args);
@@ -96,23 +97,19 @@ void thread_zip(const char *filename, char *old_char, int *count) {
 
     for (size_t i = 0; i < one_args->arr_size; i++) {
         if (one_args->char_arr[i] != '\0') {
-            fwrite(&one_args->num_arr[i], sizeof(int), 1, stdout);
-            printf("%c", one_args->char_arr[i]);
+            zip_print(one_args->num_arr[i], one_args->char_arr[i]);
         }
     }
     for (size_t i = 0; i < two_args->arr_size; i++) {
         if (two_args->char_arr[i] != '\0') {
-            fwrite(&two_args->num_arr[i], sizeof(int), 1, stdout);
-            printf("%c", two_args->char_arr[i]);
+            zip_print(two_args->num_arr[i], two_args->char_arr[i]);
         }
     }
     for (size_t i = 0; i < (three_args->arr_size) - 1; i++) {
         if (three_args->char_arr[i] != '\0') {
-            fwrite(&three_args->num_arr[i], sizeof(int), 1, stdout);
-            printf("%c", three_args->char_arr[i]);
+            zip_print(three_args->num_arr[i], three_args->char_arr[i]);
         }
     }
-    fclose(fp);
     free(one_args->char_arr);
     free(one_args->num_arr);
     free(one_args);
@@ -126,11 +123,7 @@ void thread_zip(const char *filename, char *old_char, int *count) {
 
 void *worker(void *ptr) {
     arg_t *args = (arg_t *)ptr;
-    struct stat sb;
-    int fd = fileno(args->fp);
-    fstat(fd, &sb);
-    size_t fsize = sb.st_size;
-    char *src = mmap(0, fsize, PROT_READ, MAP_PRIVATE, fd, 0);
+    char *src = args->src;
 
     size_t mem_size = 4096;
     char *tmp_char_arr = malloc(sizeof(char) * mem_size);
